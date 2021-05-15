@@ -42,6 +42,12 @@ const sendErrorProd = (err, res) => {
   }
 };
 
+const handleJWTError = err =>
+  new AppError('Invalid token please login again', 401);
+
+const handleTokenError = err =>
+  new AppError('Expired token please login again', 401);
+
 module.exports = (err, req, res, next) => {
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'error';
@@ -60,6 +66,9 @@ module.exports = (err, req, res, next) => {
     if (error._message === 'Tour validation failed')
       error = handleValidationErrorDB(error);
 
+    if (error.name === 'JsonWebTokenError') error = handleJWTError(error);
     sendErrorProd(error, res);
+
+    if (error.name === 'TokenExpiredError') error = handleTokenError(error);
   }
 };

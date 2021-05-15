@@ -1,6 +1,7 @@
 const User = require('../models/userModel');
 const catchAsync = require('../utils/catchAsync');
 const jwt = require('jsonwebtoken');
+const { promisify } = require('util');
 const AppError = require('../utils/appError');
 
 const signToken = id => {
@@ -14,7 +15,9 @@ exports.signup = catchAsync(async (req, res, next) => {
     name: req.body.name,
     email: req.body.email,
     password: req.body.password,
-    passwordConfirm: req.body.passwordConfirm
+    passwordConfirm: req.body.passwordConfirm,
+    passwordChangedAt: req.body.passwordChangedAt,
+    role: req.body.role
   });
 
   const token = signToken(newUser._id);
@@ -63,17 +66,48 @@ exports.protect = catchAsync(async (req, res, next) => {
     req.headers.authorization &&
     req.headers.authorization.startsWith('Bearer')
   ) {
-    token = req.headers.authorization.split('')[1];
+    token = req.headers.authorization.split(' ')[1];
+
+    if (!token) {
+      return next(new AppError('You are not Logged in', 401));
+    }
   }
+
   // validate token
 
-  if (!token) {
-    return next(new AppError('You are not Logged in', 401));
-  }
-
+  const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
   // check if user still exists
 
-  // check if user changed password after token was issued
+  const currentUser = await User.findById(decoded.id);
 
+  console.log(currentUser);
+
+  if (!currentUser) {
+    return next(new AppError('user token not exists'));
+  }
+
+  // check if user changed password after token was issued
+  if (currentUser.changedPasswordAfter(decoded.iat)) {
+    return next(
+      new AppError('user recently changed password! login agaimn ', 401)
+    );
+  }
+
+  // ACCESS FINALLY
+
+  req.user = currentUser;
   next();
 });
+
+exports.restrictTo = (...roles) => {
+  return (req, res, next) => {
+    // roles array
+    if (!roles.includes(req.user.role)) {
+      return next(
+        new AppError('You do not have permission to perform this kekw!')
+      );
+    } else {
+      next();
+    }
+  };
+};
