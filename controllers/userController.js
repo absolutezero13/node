@@ -31,7 +31,7 @@ exports.getUser = (req, res) => {
 };
 
 exports.updateMe = catchAsync(async (req, res, next) => {
-  // create errspr if user posts password
+  // create errspssr if user posts password
   if (req.body.password || req.body.passwordConfirm) {
     return next(new AppError('this rout is not for passwrod fuıck off', 400));
   }
