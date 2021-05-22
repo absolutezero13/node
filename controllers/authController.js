@@ -14,7 +14,7 @@ const signToken = id => {
 };
 
 const createAndSendToken = (user, statusCode, res) => {
-  const token = signToken(newUser._id);
+  const token = signToken(user._id);
 
   res.status(statusCode).json({
     status: 'success',
@@ -163,17 +163,19 @@ exports.updatePassword = catchAsync(async (req, res, next) => {
 
   // check if posted current password is correct
 
-  if (!(await user.correctPassword(req.body.passwordConfirm, user.password))) {
+  if (!(await user.correctPassword(req.body.passwordCurrent, user.password))) {
     return next(new AppError('current passwrod wrong', 401));
   }
 
   // if so update password
 
   user.password = req.body.password;
-  user.passwordConfrim = req.body.passwordConfirm;
+  user.passwordConfirm = req.body.passwordConfirm;
 
   await user.save();
-  // log user in
+  // log user in, jwt
+
+  createAndSendToken(user, 200, res);
 });
 exports.resetPassword = catchAsync(async (req, res, next) => {
   // 1- get user based on token
@@ -203,10 +205,5 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   // 3- update changePasswordAt
   // 4- log the user in
 
-  const token = signToken(user._id);
-
-  res.status(200).json({
-    status: 'success',
-    token
-  });
+  createAndSendToken(user, 200, res);
 });
