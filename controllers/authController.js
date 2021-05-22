@@ -11,6 +11,18 @@ const signToken = id => {
   });
 };
 
+const createAndSendToken = (user, statusCode, res) => {
+  const token = signToken(newUser._id);
+
+  res.status(statusCode).json({
+    status: 'success',
+    token,
+    data: {
+      user
+    }
+  });
+};
+
 exports.signup = catchAsync(async (req, res, next) => {
   const newUser = await User.create({
     name: req.body.name,
@@ -21,15 +33,7 @@ exports.signup = catchAsync(async (req, res, next) => {
     role: req.body.role
   });
 
-  const token = signToken(newUser._id);
-
-  res.status(201).json({
-    status: 'success',
-    token,
-    data: {
-      user: newUser
-    }
-  });
+  createAndSendToken(newUser, 201, res);
 });
 
 exports.login = catchAsync(async (req, res, next) => {
@@ -51,12 +55,7 @@ exports.login = catchAsync(async (req, res, next) => {
   console.log(user);
   //3 if everything ok, send token to client
 
-  const token = signToken(user._id);
-
-  res.status(200).json({
-    status: 'success',
-    token
-  });
+  createAndSendToken(user, 200, res);
 });
 
 exports.protect = catchAsync(async (req, res, next) => {
@@ -151,4 +150,26 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
     status: 'success',
     message: 'Token sent to email!'
   });
+});
+
+exports.updatePassword = catchAsync(async (req, res, next) => {
+  // get user from colection
+  const user = await User.findById(req.user.id).select('+password');
+
+  if (!user)
+    return next(new AppError('Please login to change your password', 404));
+
+  // check if posted current password is correct
+
+  if (!(await user.correctPassword(req.body.passwordConfirm, user.password))) {
+    return next(new AppError('current passwrod wrong', 401));
+  }
+
+  // if so update password
+
+  user.password = req.body.password;
+  user.passwordConfrim = req.body.passwordConfirm;
+
+  await user.save();
+  // log user in
 });
