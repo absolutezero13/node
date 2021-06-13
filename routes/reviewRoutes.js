@@ -11,6 +11,7 @@ const {
 
 const router = express.Router({ mergeParams: true });
 
+router.use(authController.protect);
 router
   .route('/')
   .get(getAllReviews)
@@ -24,6 +25,6 @@ router.route('/:id').get(getReview);
 router
   .route('/:id')
   .delete(deleteReview)
-  .patch(updateReview);
+  .patch(authController.restrictTo('user', 'admin'), updateReview);
 
 module.exports = router;
